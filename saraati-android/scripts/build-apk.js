@@ -7,6 +7,13 @@ const root = path.resolve(__dirname, '..');
 const run = (cmd, cwd) => execSync(cmd, { stdio: 'inherit', cwd: cwd || root, shell: true });
 
 if (!fs.existsSync(path.join(root, 'android'))) run('npx cap add android');
+// مكتبة Health Connect محتاجة أندرويد 8 (API 26) على الأقل، والافتراضي في Capacitor أقل
+const vars = path.join(root, 'android', 'variables.gradle');
+if (fs.existsSync(vars)) {
+  const txt = fs.readFileSync(vars, 'utf8');
+  const patched = txt.replace(/minSdkVersion\s*=\s*\d+/, 'minSdkVersion = 26');
+  if (patched !== txt) fs.writeFileSync(vars, patched);
+}
 run('node scripts/build-web.js');
 run('npx cap sync android');
 const win = process.platform === 'win32';
