@@ -1,0 +1,8 @@
+{
+  "appId": "com.saraati.app",
+  "appName": "سعراتي",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

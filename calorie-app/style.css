@@ -1,0 +1,89 @@
+/* هوية: حبر أخضر غامق + كركديه + زعفران. الشريط السفلي العايم هو العنصر المميز، والباقي هادي. */
+:root{--paper:#EDF0EE;--surface:#fff;--ink:#10231F;--mu:#5E6F6B;--line:#DCE2E0;--bar:#E1E7E5;--hib:#B0123E;--saf:#D99200;--ind:#3B5BDB;--leaf:#1F7A4D;--leafbg:#DDF1E6;--warnbg:#FBEFD2;--badbg:#F9DCE4;--w:#1C8FC4}
+@media(prefers-color-scheme:dark){:root{--paper:#0D1613;--surface:#16231F;--ink:#EAF1EE;--mu:#92A59F;--line:#26382F;--bar:#24352F;--hib:#E5527A;--saf:#F2B63D;--ind:#8EA2F5;--leaf:#4CC38A;--leafbg:#163626;--warnbg:#3A2F12;--badbg:#3C1824;--w:#4FB6E6}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Cairo','Segoe UI',Tahoma,sans-serif;font-size:15px;line-height:1.6;padding-bottom:110px}
+button,input,select{font-family:inherit}
+:focus-visible{outline:3px solid var(--ind);outline-offset:2px}
+header{position:sticky;top:0;z-index:4;background:var(--paper);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;justify-content:space-between;align-items:center;max-width:560px;margin:auto}
+.brand{font-size:22px;font-weight:900}
+.dnav{display:flex;align-items:center;gap:4px}.dnav b{font-size:19px;font-weight:800;min-width:120px;text-align:center}
+.ico{width:42px;height:42px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);font-size:20px;cursor:pointer;display:grid;place-items:center}
+.ico svg{width:20px;height:20px}
+main{padding:4px 16px 0;max-width:560px;margin:auto}
+h3{margin:0 0 8px;font-size:17px;font-weight:800}
+.mu{color:var(--mu);font-size:13px}
+.big{font-size:30px;font-weight:900;line-height:1.2}
+
+/* شريط التنقل العايم */
+nav{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:4px;background:var(--ink);padding:6px;border-radius:32px;z-index:5;box-shadow:0 8px 24px #0004}
+nav button{white-space:nowrap;border:0;background:none;color:var(--paper);opacity:.7;padding:9px 18px;border-radius:26px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px}
+nav button svg{width:20px;height:20px}
+nav button.on{background:var(--paper);color:var(--ink);opacity:1}
+
+/* أزرار */
+button.pri{background:var(--ink);color:var(--paper);border:0;border-radius:28px;padding:12px 22px;font-size:16px;font-weight:800;cursor:pointer}
+button.pri:disabled{opacity:.4}
+button.sec{background:none;border:1.5px solid var(--line);color:var(--ink);border-radius:28px;padding:9px 16px;cursor:pointer;font-size:14px;font-weight:700}
+button.x{background:none;border:0;color:var(--mu);cursor:pointer;font-size:17px;padding:4px 8px}
+button.sm{padding:7px 13px;font-size:13px}
+.full{width:100%}
+
+/* مدخلات */
+input,select{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font-size:16px;margin-bottom:8px}
+label{font-size:13px;color:var(--mu);display:block;margin-bottom:3px;font-weight:600}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.between{display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+/* الشاشة الرئيسية */
+.hero{text-align:center;padding:6px 0 4px}
+.hero svg{width:236px;height:236px}
+.macros{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:6px 0 18px}
+.macros b{font-size:18px;font-weight:800;display:block;line-height:1.3}
+.macros span{font-size:13px;color:var(--mu)}
+.macros .bar{height:5px;margin:6px 0 0}
+.bar{height:8px;background:var(--bar);border-radius:6px;overflow:hidden;margin:4px 0 10px}.bar i{display:block;height:100%;border-radius:6px}
+.qlog{display:flex;gap:8px;margin-bottom:16px}
+.qlog input{margin:0;border-radius:28px;padding:13px 18px}
+.qlog button{flex:none;width:50px;height:50px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);font-size:22px;cursor:pointer}
+
+/* قائمة الوجبات: لوح واحد بدل كروت كتير */
+.panel{background:var(--surface);border-radius:22px;padding:2px 16px;margin-bottom:14px}
+.meal{padding:14px 0;border-top:1px solid var(--line)}.meal:first-child{border-top:0}
+.meal .hd{display:flex;justify-content:space-between;align-items:baseline}
+.meal .hd b{font-size:17px;font-weight:800}
+.mrow{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+.mrow small{color:var(--mu);display:block;line-height:1.4}
+.addbtn{display:flex;align-items:center;gap:8px;background:none;border:0;color:var(--ink);font-weight:800;font-size:15px;padding:6px 0 0;cursor:pointer}
+.addbtn i{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-style:normal;font-size:18px;line-height:1}
+
+.card{background:var(--surface);border-radius:20px;padding:16px;margin-bottom:14px}
+.item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.item small{color:var(--mu);display:block;margin-top:2px}
+.days{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
+.days button{white-space:nowrap}.days .on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.status{border-radius:22px;padding:18px;margin-bottom:14px}
+.status.ok{background:var(--leafbg)}.status.slow{background:var(--warnbg)}.status.fast{background:var(--badbg)}
+.status h2{margin:0 0 4px;font-size:26px;font-weight:900}
+.banner{background:var(--leafbg);border-radius:16px;padding:12px 14px;margin:10px 0 0}
+.warn{background:var(--warnbg);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:600;margin:4px 0;color:var(--ink)}
+.fill{margin:6px 0 4px}.fill .chips{margin-top:4px}.fill .chip{font-size:13px;padding:6px 11px}
+.habits{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.tile{background:var(--surface);border-radius:18px;padding:12px}.tile b{font-size:20px;font-weight:800;display:block;line-height:1.3}.tile b span{font-size:12px;color:var(--mu);font-weight:600}.tile .bar{margin:6px 0 8px}.tile .row button{padding:8px 6px}
+.badge{display:inline-block;background:var(--leafbg);color:var(--leaf);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:800}
+
+/* نوافذ */
+.modal{position:fixed;inset:0;background:#0009;display:flex;align-items:flex-end;z-index:9}
+.modal>div{background:var(--paper);width:100%;max-width:560px;margin:auto;border-radius:26px 26px 0 0;padding:18px 16px 24px;max-height:90vh;overflow:auto}
+.modal .card,.modal .panel{background:var(--surface)}
+.res{padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button{flex:1;padding:8px 6px}.tabs .on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.water{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}
+.water i{width:28px;height:34px;border-radius:7px 7px 12px 12px;border:2px solid var(--w);display:block;cursor:pointer}
+.water i.on{background:var(--w)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:22px;padding:7px 14px;font-size:14px;cursor:pointer;user-select:none;font-weight:600}
+.chip.l{background:var(--leafbg);border-color:var(--leaf)}
+.chip.d{background:var(--badbg);border-color:var(--hib);text-decoration:line-through}
+svg text{fill:var(--mu);font-size:10px;font-family:inherit}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
