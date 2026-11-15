@@ -22,8 +22,9 @@ const byName = {}; FOODS.forEach(f => byName[f.name] = f);
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
-  s = Object.assign({ profile: null, log: {}, plan: {}, weights: [], custom: [], meals: [], water: {}, steps: {}, adaptive: null, prefs: { like: [], dislike: [] }, barcodes: {}, train: {}, fast: { start: null, goal: 16, hist: [] }, settings: { ramadan: false, waterGoal: 8, trainDays: [], stepGoal: 10000, lang: 'ar', mealTimes: { on: true, t: {}, touched: false } } }, s || {});
-  s.settings = Object.assign({ ramadan: false, waterGoal: 8, trainDays: [], stepGoal: 10000, lang: 'ar', mealTimes: { on: true, t: {}, touched: false } }, s.settings);
+  s = Object.assign({ profile: null, log: {}, plan: {}, weights: [], custom: [], meals: [], water: {}, waterMigrated: false, steps: {}, adaptive: null, prefs: { like: [], dislike: [] }, barcodes: {}, train: {}, fast: { start: null, goal: 16, hist: [] }, settings: { ramadan: false, waterGoal: 8, trainDays: [], stepGoal: 10000, cupMl: 250, waterGoalMl: null, stepsAsked: false, lang: 'ar', mealTimes: { on: true, t: {}, touched: false } } }, s || {});
+  s.settings = Object.assign({ ramadan: false, waterGoal: 8, trainDays: [], stepGoal: 10000, cupMl: 250, waterGoalMl: null, stepsAsked: false, lang: 'ar', mealTimes: { on: true, t: {}, touched: false } }, s.settings);
+  if (!s.waterMigrated) { const had = Object.keys(s.water).length > 0; for (const k in s.water) s.water[k] = s.water[k] * 250; s.waterMigrated = true; if (had && !s.settings.waterGoalMl) s.settings.waterGoalMl = (s.settings.waterGoal || 8) * 250; } // المياه بقت بالمللي
   if (!s.settings.stepGoalTouched && s.settings.stepGoal === 8000) s.settings.stepGoal = 10000; // الافتراضي القديم
   s.settings.mealTimes = Object.assign({ on: true, t: {}, touched: false }, s.settings.mealTimes);
   if (!s.settings.mealTimes.touched) s.settings.mealTimes.on = true; // افتراضي: شغّال لحد ما المستخدم يقفله
@@ -121,6 +122,7 @@ function renderToday() {
   ${nextMealLine()}
   <form class="qlog" onsubmit="quickLog(event)"><input id="ql" placeholder="اكتب اللي أكلته: رغيفين فول وبيضتين" autocomplete="off" aria-label="سجّل أكلك بالكتابة"><button aria-label="سجّل">+</button></form>
   ${habitsRow()}
+  ${dayScoreCard(t, s)}
   ${due ? `<div class="banner" style="margin:0 0 14px"><b>المدرب جاهز يحدّث هدفك</b><div class="mu" style="margin:2px 0 8px">حلّل وزنك وأكلك وعنده تقدير جديد لحرقك.</div><button class="pri sm" onclick="tab='progress';render()">شوف التحديث</button></div>` : ''}
   ${mealCards(log, 'delLog', 'log')}`;
 }
@@ -134,39 +136,104 @@ function toggleTrainDay(i) {
   const a = S.settings.trainDays, k = a.indexOf(i); if (k >= 0) a.splice(k, 1); else a.push(i);
   save(); render();
 }
+// ---------- إنجاز اليوم: مياه + أكل + خطوات ----------
+function dayScoreCard(t, s) {
+  const w = S.water[date] || 0, wg = waterGoalMl(), st = S.steps[date] || 0, sg = S.settings.stepGoal;
+  const water = Math.min(1, w / wg);
+  const kc = Math.max(0, 1 - Math.abs(s.kcal - t.kcal) / t.kcal * 2), pr = Math.min(1, s.p / t.p);
+  const food = s.kcal ? 0.6 * kc + 0.4 * pr : 0;
+  const useSteps = !!window.NativeSteps && stepsInfo.state === 'ok';
+  const parts = [['المياه', water, 'var(--w)'], ['الأكل', food, 'var(--hib)']].concat(useSteps ? [['الخطوات', Math.min(1, st / sg), 'var(--leaf)']] : []);
+  const total = Math.round(parts.reduce((a, p) => a + p[1], 0) / parts.length * 100);
+  const missing = [];
+  if (wg - w > wg * 0.15) missing.push(`اشرب ${lit(wg - w)} لتر كمان`);
+  if (s.kcal < t.kcal * 0.9) missing.push(`ناقص ${r(t.kcal - s.kcal)} سعرة`); else if (s.kcal > t.kcal * 1.1) missing.push(`زودت ${r(s.kcal - t.kcal)} سعرة عن الهدف`);
+  if (s.p < t.p * 0.9) missing.push(`ناقص بروتين ${r(t.p - s.p)} جم`);
+  if (useSteps && sg - st > sg * 0.15) missing.push(`امشي ${nf(sg - st)} خطوة كمان`);
+  const verdict = total >= 85 ? 'يوم ممتاز: المياه والأكل والخطوات على الهدف تقريبا.' : (total >= 60 ? 'كويس، لسه فيه حاجات ناقصة:' : 'لسه قدامك شوية النهاردة:');
+  return `<div class="card"><div class="between"><h3 style="margin:0">${date === today() ? 'إنجاز النهاردة' : 'إنجاز يوم ' + dayLabel(date)}</h3><span class="big">${total}%</span></div>
+  ${parts.map(p => `<div class="between" style="margin-top:8px"><span class="mu">${p[0]}</span><b>${Math.round(p[1] * 100)}%</b></div><div class="bar" style="margin:2px 0 0"><i style="width:${Math.round(p[1] * 100)}%;background:${p[2]}"></i></div>`).join('')}
+  <div style="margin-top:10px">${total >= 85 ? verdict : verdict + '<br>' + missing.map(m => '• ' + m).join('<br>')}</div></div>`;
+}
 function setLang(l) { S.settings.lang = l; save(); closeModal(); startTranslator(); render(); scrollTo(0, 0); }
 function shift(n) { const d = new Date(date); d.setDate(d.getDate() + n); date = today(d); render(); syncSteps(date); }
 function delLog(i) { S.log[date].splice(i, 1); save(); render(); }
 const nf = n => Number(n).toLocaleString('en');
-function suggestedWater() { return Math.min(14, Math.max(6, Math.round(S.profile.kg * 33 / 250))); }
+const lit = ml => String(Math.round(ml / 10) / 100); // 1250 -> 1.25
+function suggestedWaterMl() { return Math.min(4500, Math.max(1500, Math.round(S.profile.kg * 33 / 50) * 50)); }
+const cupMl = () => S.settings.cupMl || 250;
+const waterGoalMl = () => S.settings.waterGoalMl || suggestedWaterMl();
+let stepsInfo = { state: 'init', empty: false, err: '' }; // init | ok | needs | unavailable | web
+
+// ---------- مربعات المياه والخطوات ----------
 function habitsRow() {
-  const w = S.water[date] || 0, wg = S.settings.waterGoal, st = S.steps[date] || 0, sg = S.settings.stepGoal;
-  const tile = (title, valTxt, goalTxt, pct, color, actions) => `<div class="tile"><div class="mu">${title}</div><b>${valTxt}<span> / ${goalTxt}</span></b><div class="bar"><i style="width:${Math.min(100, pct)}%;background:${color}"></i></div>${actions}</div>`;
+  const w = S.water[date] || 0, wg = waterGoalMl(), st = S.steps[date] || 0, sg = S.settings.stepGoal;
+  const native = !!window.NativeSteps, i = stepsInfo;
+  const sub = !native ? 'بتتحسب تلقائي في تطبيق أندرويد' : i.state === 'ok' ? 'تلقائي من Health Connect' : i.state === 'unavailable' ? 'محتاج Health Connect' : i.state === 'needs' ? 'اضغط لتفعيل الخطوات' : 'اضغط للتفاصيل';
+  const tile = (title, valTxt, goalTxt, pct, color, extra, click) => `<div class="tile" onclick="${click}" role="button" tabindex="0"><div class="mu">${title}</div><b>${valTxt}<span> / ${goalTxt}</span></b><div class="bar"><i style="width:${Math.min(100, pct)}%;background:${color}"></i></div>${extra}</div>`;
   return `<div class="habits">
-  ${tile('المياه (كوب = 250 مل)', w, wg + ' كوب', w / wg * 100, 'var(--w)', `<div class="row"><button class="sec sm" aria-label="شيل كوب" onclick="setWater(${Math.max(0, w - 1)})">−</button><button class="pri sm" onclick="setWater(${w + 1})">+ كوب</button></div>`)}
-  ${tile('خطوات المشي', nf(st), nf(sg) + ' خطوة', st / sg * 100, 'var(--leaf)', (window.NativeSteps ? `<div class="row"><button class="pri sm" onclick="syncSteps()">تحديث</button><button class="sec sm" onclick="openSteps()">عدّل</button></div>` : `<button class="sec sm full" onclick="openSteps()">${st ? 'عدّل' : 'سجّل'} الخطوات</button>`))}</div>`;
+  ${tile('المياه', lit(w), lit(wg) + ' لتر', w / wg * 100, 'var(--w)', `<div class="row"><button class="sec sm" aria-label="شيل كوب" onclick="event.stopPropagation();setWater(${Math.max(0, w - cupMl())})">−</button><button class="pri sm" onclick="event.stopPropagation();setWater(${w + cupMl()})">+ كوب</button></div>`, 'openWater()')}
+  ${tile('خطوات المشي', nf(st), nf(sg) + ' خطوة', st / sg * 100, 'var(--leaf)', `<div class="mu">${sub}</div>`, 'openSteps()')}</div>`;
 }
-function setWater(n) { S.water[date] = n; save(); render(); }
+function setWater(ml) { S.water[date] = Math.max(0, ml); save(); render(); }
+
+// ---------- إعدادات المياه ----------
+function openWater() {
+  const w = S.water[date] || 0, wg = waterGoalMl(), c = cupMl();
+  modal(`<div class="between"><h3>المياه · ${dayLabel(date)}</h3><button class="x" aria-label="إغلاق" onclick="closeModal()">✕</button></div>
+  <div class="big" style="margin:4px 0">${lit(w)} <span class="mu">/ ${lit(wg)} لتر</span></div>
+  <div class="bar"><i style="width:${Math.min(100, w / wg * 100)}%;background:var(--w)"></i></div>
+  <div class="row" style="margin-bottom:14px"><button class="sec" onclick="setWaterM(${Math.max(0, w - c)})">− ${c} مل</button><button class="pri" onclick="setWaterM(${w + c})">+ ${c} مل</button></div>
+  <label>كمية المياه اللي عايز تشربها يوميا (لتر)</label>
+  <input type="number" step="0.25" min="0.5" max="8" value="${lit(wg)}" onchange="setWaterGoal(this.value)">
+  <div class="mu" style="margin:-4px 0 10px">المقترح لوزنك: ${lit(suggestedWaterMl())} لتر (حوالي 33 مل لكل كجم).</div>
+  <label>حجم الكوب</label>
+  <select onchange="setCup(this.value)">${[150, 200, 250, 330, 500].map(v => `<option value="${v}" ${v === c ? 'selected' : ''}>${v} مل</option>`).join('')}</select>
+  <button class="pri full" onclick="closeModal()">تم</button>`);
+}
+function setWaterM(ml) { S.water[date] = Math.max(0, ml); save(); render(); openWater(); }
+function setWaterGoal(l) { const v = Math.round((+l || 0) * 1000); if (v >= 500) S.settings.waterGoalMl = Math.min(8000, v); save(); render(); openWater(); }
+function setCup(v) { S.settings.cupMl = +v; save(); render(); openWater(); }
+
+// ---------- إعدادات الخطوات (بتتحسب تلقائي من Health Connect) ----------
 function openSteps() {
+  const st = S.steps[date] || 0, sg = S.settings.stepGoal, i = stepsInfo, native = !!window.NativeSteps;
+  const state = !native ? 'بتتحسب تلقائي في تطبيق أندرويد بس.' : i.state === 'ok' ? (i.empty && !st ? 'متصل، لكن مفيش خطوات متسجلة النهاردة في Health Connect. لازم Google Fit أو Samsung Health يكون بيسجل خطواتك.' : 'متصل بـ Health Connect ✓') : i.state === 'unavailable' ? 'Health Connect مش متاح على موبايلك.' : i.state === 'needs' ? 'محتاج صلاحية قراءة الخطوات.' : 'بنتأكد من الاتصال…';
   modal(`<div class="between"><h3>خطوات ${dayLabel(date)}</h3><button class="x" aria-label="إغلاق" onclick="closeModal()">✕</button></div>
-  <label>عدد الخطوات</label><input id="stp" type="number" inputmode="numeric" value="${S.steps[date] || ''}" placeholder="مثلا 6500">
-  <div class="mu" style="margin-bottom:10px">${window.NativeSteps ? 'الخطوات بتتحدّث تلقائي من Health Connect. تقدر تكتب رقم يدوي لو عايز.' : 'اقرأ الرقم من تطبيق الصحة في موبايلك (Google Fit أو Samsung Health أو Apple Health) واكتبه هنا. التطبيق مش بيقدر يقرا عدّاد الخطوات لوحده.'}</div>
-  <button class="pri full" onclick="saveSteps()">حفظ</button>`);
+  <div class="big" style="margin:4px 0">${nf(st)} <span class="mu">/ ${nf(sg)}</span></div>
+  <div class="bar"><i style="width:${Math.min(100, st / sg * 100)}%;background:var(--leaf)"></i></div>
+  <div class="mu" style="margin-bottom:10px">${state}${i.err ? '<br><small dir="ltr">' + esc(i.err) + '</small>' : ''}</div>
+  ${native && i.state !== 'ok' && i.state !== 'unavailable' ? '<button class="pri full" style="margin-bottom:8px" onclick="enableSteps()">اسمح بالوصول للخطوات</button>' : ''}
+  ${native && i.state === 'unavailable' ? '<button class="pri full" style="margin-bottom:8px" onclick="NativeSteps.installHealthConnect()">نزّل Health Connect</button>' : ''}
+  ${native ? '<button class="sec full" style="margin-bottom:12px" onclick="refreshSteps()">حدّث الآن</button>' : ''}
+  <label>الهدف اليومي للخطوات</label>
+  <input type="number" inputmode="numeric" value="${sg}" onchange="setStepGoal(this.value)">
+  <div class="mu" style="margin-bottom:10px">الخطوات بتتحسب لوحدها من Health Connect. محتاج تطبيق بيسجّل خطواتك فيه (Google Fit أو Samsung Health).</div>
+  <button class="pri full" onclick="closeModal()">تم</button>`);
 }
-// خطوات تلقائية من Health Connect (في تطبيق أندرويد بس). بناخد الأكبر عشان صفر الحساس ما يمسحش رقم كتبته.
-let stepsReady = null;
-async function syncSteps(d) {
-  if (!window.NativeSteps) return;
+async function enableSteps() { await syncSteps(date, true); openSteps(); }
+async function refreshSteps() { await syncSteps(date, false); openSteps(); }
+function setStepGoal(v) { S.settings.stepGoal = Math.max(1000, Math.round(+v || 10000)); S.settings.stepGoalTouched = true; save(); render(); openSteps(); }
+
+// قراءة الخطوات من Health Connect (في تطبيق أندرويد بس)
+async function syncSteps(d, ask) {
+  if (!window.NativeSteps) { stepsInfo.state = 'web'; return; }
   d = d || date;
+  const before = stepsInfo.state + '|' + S.steps[d];
   try {
-    if (stepsReady === null) { stepsReady = await NativeSteps.available(); if (stepsReady) await NativeSteps.authorize(); }
-    if (!stepsReady) return;
-    const v = Math.round(await NativeSteps.stepsFor(d));
-    if (v > (S.steps[d] || 0)) { S.steps[d] = v; save(); if (tab === 'today' && d === date) render(); }
-  } catch (e) { stepsReady = false; }
+    let st = await NativeSteps.status();
+    if (st.state === 'unavailable') { stepsInfo = { state: 'unavailable', empty: false, err: st.reason || '' }; }
+    else {
+      if (st.state !== 'ok' && (ask || !S.settings.stepsAsked)) { S.settings.stepsAsked = true; save(); await NativeSteps.authorize(); st = await NativeSteps.status(); }
+      const v = Math.round(await NativeSteps.stepsFor(d));
+      stepsInfo = { state: st.state === 'denied' ? 'needs' : 'ok', empty: v === 0 && st.state !== 'ok', err: '' };
+      if (stepsInfo.state === 'ok' && v >= 0) { S.steps[d] = v; save(); }
+    }
+  } catch (e) { stepsInfo = { state: 'needs', empty: false, err: String((e && e.message) || e) }; }
+  if (before !== stepsInfo.state + '|' + S.steps[d] && tab === 'today') render();
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncSteps(); });
-function saveSteps() { const v = Math.max(0, Math.round(+$('#stp').value || 0)); S.steps[date] = v; save(); closeModal(); render(); }
+
 function stepsChart(goal) {
   const days = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = today(d); days.push({ v: S.steps[k] || 0, n: d.getDate() }); }
   const mx = Math.max(goal * 1.2, ...days.map(d => d.v)), H = 110;
@@ -432,7 +499,7 @@ function weekReport(t) {
   else if (on >= 5) tip = 'ممتاز! التزامك عالي الأسبوع ده 👏';
   const row = (l, v) => `<div class="between item"><span class="mu">${l}</span><b>${v}</b></div>`;
   return row('أيام مسجّلة', lg.length + ' / 7') + row('متوسط السعرات', r(ak) + ' (الهدف ' + t.kcal + ')') + row('متوسط البروتين', r(ap) + ' جم (الهدف ' + t.p + ')')
-    + row('أيام على الهدف (±10%)', on) + row('متوسط المياه', avg(days.map(d => d.w)).toFixed(1) + ' كوب') + (days.some(d => d.st) ? row('متوسط الخطوات', nf(Math.round(avg(days.filter(d => d.st).map(d => d.st))))) : '') + (wd !== null ? row('تغير الوزن', (wd > 0 ? '+' : '') + wd.toFixed(1) + ' كجم') : '')
+    + row('أيام على الهدف (±10%)', on) + row('متوسط المياه', (avg(days.map(d => d.w)) / 1000).toFixed(1) + ' لتر') + (days.some(d => d.st) ? row('متوسط الخطوات', nf(Math.round(avg(days.filter(d => d.st).map(d => d.st))))) : '') + (wd !== null ? row('تغير الوزن', (wd > 0 ? '+' : '') + wd.toFixed(1) + ' كجم') : '')
     + `<div class="banner" style="margin:10px 0 0">💡 ${tip}</div>`;
 }
 function addWeight() {
@@ -458,8 +525,7 @@ function renderSetup() {
   <div class="mu">BMR ${t.bmr} · الحرق ${t.tdee}</div><div class="mu" style="margin-top:6px">بروتين ${t.p}ج · كارب ${t.c}ج · دهون ${t.f}ج</div></div>
   <div class="card"><h3>إعدادات</h3>
   <div class="between" style="margin-bottom:10px"><span>🌙 وضع رمضان (إفطار / عشاء / سحور)</span><input type="checkbox" style="width:auto;margin:0" ${S.settings.ramadan ? 'checked' : ''} onchange="S.settings.ramadan=this.checked;save();render()"></div>
-  <label>هدف المياه بالأكواب (الكوب 250 مل) · المقترح لوزنك ${suggestedWater()} كوب</label><input type="number" value="${S.settings.waterGoal}" onchange="S.settings.waterGoal=Math.max(1,+this.value||8);save();render()">
-  <label>الهدف اليومي للخطوات</label><input type="number" value="${S.settings.stepGoal}" onchange="S.settings.stepGoal=Math.max(1000,+this.value||10000);S.settings.stepGoalTouched=true;save();render()"></div>
+  <div class="mu">هدف المياه والخطوات بتعدّله من شاشة اليوم: اضغط على مربع المياه أو الخطوات.</div></div>
   <div class="card"><h3>اللغة / Language</h3><div class="chips"><span class="chip ${!isEN() ? 'l' : ''}" onclick="setLang('ar')">العربية</span><span class="chip ${isEN() ? 'l' : ''}" onclick="setLang('en')">English</span></div></div>
   <div class="card"><div class="between"><h3 style="margin:0">مواعيد الوجبات</h3><input type="checkbox" style="width:auto;margin:0" aria-label="فعّل المواعيد" ${mtOn() ? 'checked' : ''} onchange="setMealTimes(this.checked)"></div>
   <div class="mu" style="margin:6px 0 ${mtOn() ? 10 : 0}px">مواعيد مقترحة وتقدر تغيرها. الميعاد بيظهر جنب كل وجبة وبيقولك الوجبة الجاية.</div>
@@ -481,7 +547,7 @@ function saveProfile() {
   const p = { sex: $('#sex').value, age: +$('#age').value, cm: +$('#cm').value, kg: +$('#kg').value, act: +$('#act').value, rate: +$('#rate').value };
   if (!(p.age > 0 && p.cm > 0 && p.kg > 0)) return alert('اكتب السن والطول والوزن صح');
   const first = !S.profile, o = S.profile;
-  if (first) S.settings.waterGoal = Math.min(14, Math.max(6, Math.round(p.kg * 33 / 250)));
+  if (first) S.settings.waterGoalMl = Math.min(4500, Math.max(1500, Math.round(p.kg * 33 / 50) * 50));
   if (o && (o.sex !== p.sex || o.age !== p.age || o.cm !== p.cm || o.act !== p.act)) S.adaptive = null; // المعادلة اتغيرت
   S.profile = p;
   if (first) S.weights.push({ d: today(), kg: p.kg });

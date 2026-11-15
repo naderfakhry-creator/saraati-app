@@ -69,7 +69,7 @@ label{font-size:13px;color:var(--mu);display:block;margin-bottom:3px;font-weight
 .banner{background:var(--leafbg);border-radius:16px;padding:12px 14px;margin:10px 0 0}
 .warn{background:var(--warnbg);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:600;margin:4px 0;color:var(--ink)}
 .fill{margin:6px 0 4px}.fill .chips{margin-top:4px}.fill .chip{font-size:13px;padding:6px 11px}
-.habits{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.tile{background:var(--surface);border-radius:18px;padding:12px}.tile b{font-size:20px;font-weight:800;display:block;line-height:1.3}.tile b span{font-size:12px;color:var(--mu);font-weight:600}.tile .bar{margin:6px 0 8px}.tile .row button{padding:8px 6px}
+.habits{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.tile{background:var(--surface);border-radius:18px;padding:12px;cursor:pointer}.tile b{font-size:20px;font-weight:800;display:block;line-height:1.3}.tile b span{font-size:12px;color:var(--mu);font-weight:600}.tile .bar{margin:6px 0 8px}.tile .row button{padding:8px 6px}
 .badge{display:inline-block;background:var(--leafbg);color:var(--leaf);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:800}
 
 /* نوافذ */

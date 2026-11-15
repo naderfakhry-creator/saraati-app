@@ -41,6 +41,12 @@ const SERV_EN = {
 
 // ---------- جمل ديناميكية (فيها أرقام) ----------
 const EN_PATTERNS = [
+  ['المقترح لوزنك: {n} لتر (حوالي 33 مل لكل كجم).', 'Suggested for your weight: $1 L (about 33 ml per kg).'],
+  ['إنجاز يوم {*}', 'Progress for $1'],
+  ['اشرب {n} لتر كمان', 'Drink $1 L more'],
+  ['زودت {n} سعرة عن الهدف', 'Over by $1 kcal'],
+  ['ناقص بروتين {n} جم', 'Short on protein by $1 g'],
+  ['امشي {n} خطوة كمان', 'Walk $1 more steps'],
   ['بتنزل {n} كجم/أسبوع، قريب من هدفك. كمّل كده', "You're losing $1 kg/week, close to your goal. Keep it up"],
   ['بتزيد {n} كجم/أسبوع، قريب من هدفك. كمّل كده', "You're gaining $1 kg/week, close to your goal. Keep it up"],
   ['بتزيد {n} كجم/أسبوع، وجزء كبير منها غالبا دهون. قلّل السعرات شوية', "You're gaining $1 kg/week, and much of it is probably fat. Cut calories a little"],
@@ -173,6 +179,16 @@ const EN_PHRASES = Object.assign({}, FOOD_EN, {
   'المعتاد (فطار 10 – 12)': 'Usual (breakfast 10 – 12)', 'صباحي (فطار 7:30 – 9)': 'Early (breakfast 7:30 – 9)',
   // نسخ احتياطي/تقني
   'الأخضر': 'Green',
+  'لتر': 'L', 'مل': 'ml', 'كمية المياه اللي عايز تشربها يوميا (لتر)': 'How much water you want to drink daily (liters)', 'حجم الكوب': 'Cup size',
+  'بتتحسب تلقائي في تطبيق أندرويد': 'Counted automatically in the Android app', 'محتاج Health Connect': 'Needs Health Connect', 'اضغط لتفعيل الخطوات': 'Tap to enable steps', 'تلقائي من Health Connect': 'Automatic via Health Connect', 'اضغط للتفاصيل': 'Tap for details',
+  'بتتحسب تلقائي في تطبيق أندرويد بس.': 'Counted automatically in the Android app only.', 'متصل بـ Health Connect ✓': 'Connected to Health Connect ✓', 'Health Connect مش متاح على موبايلك.': 'Health Connect is not available on your phone.',
+  'محتاج صلاحية قراءة الخطوات.': 'Needs permission to read steps.', 'بنتأكد من الاتصال…': 'Checking the connection…', 'اسمح بالوصول للخطوات': 'Allow access to steps', 'نزّل Health Connect': 'Get Health Connect', 'حدّث الآن': 'Refresh now',
+  'متصل، لكن مفيش خطوات متسجلة النهاردة في Health Connect. لازم Google Fit أو Samsung Health يكون بيسجل خطواتك.': 'Connected, but no steps are recorded today in Health Connect. Google Fit or Samsung Health must be recording your steps.',
+  'الخطوات بتتحسب لوحدها من Health Connect. محتاج تطبيق بيسجّل خطواتك فيه (Google Fit أو Samsung Health).': 'Steps are counted automatically from Health Connect. You need an app that records your steps there (Google Fit or Samsung Health).',
+  'هدف المياه والخطوات بتعدّله من شاشة اليوم: اضغط على مربع المياه أو الخطوات.': 'Edit your water and step goals from the Today screen: tap the water or steps tile.',
+  'الخطوات': 'Steps', 'الأكل': 'Food', 'إنجاز النهاردة': "Today's progress", 'يوم ممتاز: المياه والأكل والخطوات على الهدف تقريبا.': 'Excellent day: water, food and steps are about on target.',
+  'كويس، لسه فيه حاجات ناقصة:': 'Good, a few things are still missing:', 'لسه قدامك شوية النهاردة:': 'You still have some way to go today:',
+  'مياه': 'Water',
   'تحديث': 'Refresh', 'الخطوات بتتحدّث تلقائي من Health Connect. تقدر تكتب رقم يدوي لو عايز.': 'Steps update automatically from Health Connect. You can type a number manually if you like.',
   'سجّله في': 'Log it to', 'اليوم المعروض': 'the displayed day', 'هدف الوجبة ≈': 'Meal target ≈', 'الوجبة بعد الإضافة': 'Meal after adding', 'الوجبة كلها': 'Whole meal', 'بعد الإضافة': 'after adding',
   'آخر وزن': 'Last weight', 'الترند': 'Trend', 'الحرق': 'Burn', 'صايم من': 'Fasting for', 'بحبها': 'liked', 'مش بحبها': 'disliked', 'الاقتراحات والجدول بيتبنوا عليها': 'Suggestions and your plan are built on these', 'خطوات': 'Steps for'
