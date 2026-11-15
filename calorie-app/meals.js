@@ -47,7 +47,7 @@ function mealType(meal, ram) {
 function mealTarget(t, meal, ram) { const s = mealShare(meal, ram); return { kcal: t.kcal * s, p: t.p * s, c: t.c * s, f: t.f * s }; }
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const sumI = items => items.reduce((a, i) => ({ kcal: a.kcal + i.kcal, p: a.p + i.p, c: a.c + i.c, f: a.f + i.f }), { kcal: 0, p: 0, c: 0, f: 0 });
-function capOf(f) { const m = Math.max(0, ...(f.serv || []).map(s => s.g)); return m ? Math.max(m * 2, 60) : 300; }
+function capOf(f) { const m = Math.max(0, ...(f.serv || []).map(s => s.g)); return m ? Math.max(m * 2, 40) : 300; }
 
 function wOf(n, pr) { if (pr.dislike.includes(n)) return 0; return pr.like.includes(n) ? 4 : 1; }
 function pickW(pool, pr, avoid = []) {
@@ -85,22 +85,65 @@ function candidate(type, pr) {
   return parts.length >= 2 ? parts : null;
 }
 
-// ضبط الجرامات على هدف الوجبة
+// ضبط الجرامات على هدف الوجبة (سعرات + بروتين + كارب + دهون) بتحسين فعلي، مش تقدير
 const ROUND_UNIT = { 'بيض مسلوق': 50, 'أومليت': 60 };
-function sizeParts(parts, T, byName) {
+const maxServ = f => Math.max(0, ...(f.serv || []).map(s => s.g));
+const minPortion = f => Math.max(20, Math.round(maxServ(f) * 0.5 / 5) * 5); // أقل كمية منطقية (نص حصة)
+const ROLE_BOUNDS = {
+  protein: f => [Math.max(30, minPortion(f)), Math.min(450, capOf(f))],
+  carb: f => [minPortion(f), Math.min(450, capOf(f))],
+  dish: f => [Math.max(100, minPortion(f)), Math.min(450, Math.max(capOf(f), 300))],
+  snack: f => [10, Math.min(450, Math.max(40, Math.round((maxServ(f) || 150) * 1.5)))],
+  veg: f => [40, 150], fruit: f => [60, 250], fat: f => [3, 12]
+};
+function rawTotals(items) {
+  const t = { kcal: 0, p: 0, c: 0, f: 0 };
+  items.forEach(i => { const q = i.g / 100; t.kcal += i.f.kcal * q; t.p += i.f.p * q; t.c += i.f.c * q; t.f += i.f.f * q; });
+  return t;
+}
+// الخسارة: النقص في البروتين والكارب بيتعاقب أكتر من الزيادة
+function lossOf(items, mt) {
+  const t = rawTotals(items), rel = (v, tg, floor) => (v - tg) / Math.max(tg, floor);
+  const k = rel(t.kcal, mt.kcal, 50), p = rel(t.p, mt.p, 10), c = rel(t.c, mt.c, 20), f = rel(t.f, mt.f, 8);
+  return 1.5 * k * k + (p < 0 ? 2.5 : 0.6) * p * p + (c < 0 ? 1.6 : 0.8) * c * c + 0.25 * f * f;
+}
+function optimizeGrams(items, mt) {
+  items.forEach(i => { const [lo, hi] = (ROLE_BOUNDS[i.role] || ROLE_BOUNDS.carb)(i.f); i.lo = lo; i.hi = hi; i.g = clamp(i.g || lo, lo, hi); });
+  for (const step of [40, 20, 10, 5]) {
+    for (let pass = 0; pass < 40; pass++) {
+      let improved = false;
+      for (const i of items) {
+        const u = ROUND_UNIT[i.f.name] || 5, s = Math.max(u, Math.round(step / u) * u), cur = lossOf(items, mt);
+        for (const d of [s, -s]) {
+          const ng = clamp(i.g + d, i.lo, i.hi); if (ng === i.g) continue;
+          const old = i.g; i.g = ng;
+          if (lossOf(items, mt) < cur - 1e-6) { improved = true; break; }
+          i.g = old;
+        }
+      }
+      if (!improved) break;
+    }
+  }
+}
+// الوجبة "مظبوطة" لو السعرات ±10% والبروتين ≥ 90% والكارب ≥ 85% من المطلوب
+function mealOk(tot, mt) {
+  return tot.kcal >= mt.kcal * 0.9 && tot.kcal <= Math.max(mt.kcal * 1.1, mt.kcal + 30) && (mt.p < 10 || tot.p >= mt.p * 0.9) && (mt.c < 15 || tot.c >= mt.c * 0.85);
+}
+function sizeParts(parts, T, byName, type, pr) {
   const items = parts.map(x => ({ f: byName[x.name], role: x.role, g: 0 }));
   items.forEach(i => {
-    if (i.role === 'veg') i.g = i.f.kcal > 60 ? 60 : 120;
-    if (i.role === 'fruit') i.g = (i.f.serv[0] && i.f.serv[0].g) || 120;
-    if (i.role === 'fat') i.g = 5;
+    i.g = i.role === 'veg' ? (i.f.kcal > 60 ? 60 : 120) : i.role === 'fruit' ? ((i.f.serv[0] && i.f.serv[0].g) || 120) : i.role === 'fat' ? 5 : i.role === 'protein' ? 120 : 150;
   });
-  const kc = a => a.reduce((s, i) => s + i.f.kcal * i.g / 100, 0), pr = a => a.reduce((s, i) => s + i.f.p * i.g / 100, 0);
-  const prot = items.find(i => i.role === 'protein'), fill = items.filter(i => ['carb', 'dish', 'snack'].includes(i.role)), rest = items.filter(i => !fill.includes(i));
-  fill.forEach(i => i.g = 100);
-  for (let k = 0; k < 3; k++) {
-    if (prot) { prot.g = 0; prot.g = clamp(Math.max(0, T.p - pr(items)) / (prot.f.p / 100 || 1), 30, capOf(prot.f)); }
-    const room = Math.max(0, T.kcal - kc(rest));
-    fill.forEach(i => { i.g = clamp(room / fill.length / (i.f.kcal / 100), 20, capOf(i.f)); });
+  optimizeGrams(items, T);
+  // لو لسه ناقص بروتين أو كارب: ضيف مكوّن يسدّ النقص وأعد الضبط
+  for (let k = 0; k < 3 && type && pr; k++) {
+    const tot = rawTotals(items);
+    if (mealOk(tot, T)) break;
+    const asItems = items.map(i => { const q = i.g / 100; return { base: i.f.name, kcal: i.f.kcal * q, p: i.f.p * q, c: i.f.c * q, f: i.f.f * q }; });
+    const sug = fillSuggestions(asItems, T, type, pr, byName)[0];
+    if (!sug) break;
+    items.push({ f: byName[sug.name], role: sug.kind === 'protein' ? 'protein' : sug.kind === 'carb' ? 'carb' : 'snack', g: sug.g });
+    optimizeGrams(items, T);
   }
   return items.map(i => {
     const u = ROUND_UNIT[i.f.name] || 5, g = Math.max(u, Math.round(i.g / u) * u), q = g / 100;
@@ -108,15 +151,15 @@ function sizeParts(parts, T, byName) {
   });
 }
 
-// اقتراحات وجبة: بتولّد مرشحين وتختار الأقرب لهدفك والمختلفين عن بعض
+// اقتراحات وجبة: بتولّد مرشحين، وتفضّل المظبوطين على احتياجاتك، وبتنوّع بينهم
 function suggestMeals(meal, t, pr, byName, n = 3, ram = false) {
   const type = mealType(meal, ram), mt = mealTarget(t, meal, ram), seen = new Set(), cands = [];
-  for (let k = 0; k < 60 && cands.length < 16; k++) {
+  for (let k = 0; k < 90 && cands.length < 24; k++) {
     const parts = candidate(type, pr); if (!parts) continue;
     const key = parts.map(p => p.name).join('|'); if (seen.has(key)) continue; seen.add(key);
-    const items = sizeParts(parts, mt, byName), tot = sumI(items);
+    const items = sizeParts(parts, mt, byName, type, pr), tot = sumI(items), ok = mealOk(tot, mt);
     const dist = Math.abs(tot.kcal - mt.kcal) / mt.kcal + Math.abs(tot.p - mt.p) / Math.max(mt.p, 15) * .7 + Math.abs(tot.c - mt.c) / Math.max(mt.c, 25) * .4 + Math.abs(tot.f - mt.f) / Math.max(mt.f, 8) * .3;
-    cands.push({ items, tot, score: dist - parts.filter(p => pr.like.includes(p.name)).length * .08 });
+    cands.push({ items, tot, ok, score: dist + (ok ? 0 : 5) - parts.filter(p => pr.like.includes(p.name)).length * .08 });
   }
   cands.sort((a, b) => a.score - b.score);
   const out = [], used = new Set();
@@ -128,13 +171,15 @@ function suggestMeals(meal, t, pr, byName, n = 3, ram = false) {
 // ---------- اقتراحات تكميل وجبة ناقصة ----------
 // بتقترح أكلات + جرامات تسدّ النقص في البروتين أو الكارب (أو السعرات لو الباقي تمام)، من غير ما تعدّي سعرات الوجبة، وبتحترم تفضيلاتك
 function fillSuggestions(items, mt, type, pr, byName) {
+  if (type === 'bf' && items.some(i => P_SWEET.includes(i.base) || C_CEREAL.includes(i.base))) type = 'bfsweet'; // فطار حلو: ما نضيفش فول عليه
   const s = sumI(items), gap = { kcal: mt.kcal - s.kcal, p: mt.p - s.p, c: mt.c - s.c }, have = new Set(items.map(i => i.base));
+  [C_BREAD, C_CEREAL].forEach(fam => { if (items.some(i => fam.includes(i.base))) fam.forEach(n => have.add(n)); }); // ما نضيفش نوع تاني من نفس العيلة (عيش على عيش)
   const needP = mt.p >= 10 && gap.p > mt.p * 0.15, needC = mt.c >= 15 && gap.c > mt.c * 0.2, needK = gap.kcal > mt.kcal * 0.15;
   if (!items.length || (!needP && !needC && !needK)) return [];
   const room = Math.max(0, mt.kcal * 1.1 - s.kcal);
   const POOL = {
-    protein: { bf: uniq([...P_SAV, 'زبادي يوناني', 'بروتين واي']), main: uniq([...P_MAIN, ...P_LIGHT]), light: P_LIGHT, snack: SNACKP },
-    carb: { bf: uniq([...C_BREAD, ...C_CEREAL, 'موز', 'تمر']), main: C_MAIN, light: C_LIGHT, snack: FRUIT },
+    protein: { bf: P_SAV, bfsweet: ['زبادي يوناني', 'زبادي طبيعي', 'بروتين واي'], main: uniq([...P_MAIN, ...P_LIGHT]), light: P_LIGHT, snack: SNACKP },
+    carb: { bf: uniq([...C_BREAD, 'موز', 'تمر', 'عسل']), bfsweet: uniq([...C_CEREAL, 'موز', 'تمر', 'عسل']), main: C_MAIN, light: C_LIGHT, snack: uniq([...FRUIT, 'عسل']) },
     kcal: ['لوز', 'فول سوداني', 'جوز', 'زبدة فول سوداني', 'تمر', 'عسل', 'زيت زيتون', 'طحينة', 'موز', 'لبن كامل']
   };
   const build = (kind, n) => {

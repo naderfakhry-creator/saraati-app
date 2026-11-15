@@ -86,7 +86,7 @@ function mealTgt(target, meal) { return mealTarget(targets(S, target === 'plan' 
 function mealWarns(items, mt) {
   const s = sum(items), w = [];
   if (s.kcal <= 0) return w;
-  if (s.kcal > mt.kcal * 1.1) w.push(`زودت ${r(s.kcal - mt.kcal)} سعرة عن المطلوب (${r(mt.kcal)})`);
+  if (s.kcal > Math.max(mt.kcal * 1.1, mt.kcal + 30)) w.push(`زودت ${r(s.kcal - mt.kcal)} سعرة عن المطلوب (${r(mt.kcal)})`);
   if (mt.p >= 10 && s.p < mt.p * 0.85) w.push(`ناقص بروتين ${r(mt.p - s.p)} جم عن المطلوب (${r(mt.p)})`);
   if (mt.c >= 15 && s.c < mt.c * 0.8) w.push(`ناقص كارب ${r(mt.c - s.c)} جم عن المطلوب (${r(mt.c)})`);
   return w;
